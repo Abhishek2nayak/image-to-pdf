@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Job {
+  id       String    @id @default(cuid())
+  type     String
+  status   JobStatus @default(CREATED)
+  progress Int       @default(0)
+
+  files File[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model File {
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  fileName  String
+  fileOrder Int
+  filePath  String? // becomes available after upload completes
+
+  totalChunks    Int        @default(1)
+  uploadedChunks Int        @default(0)
+  status         FileStatus @default(UPLOADING)
+
+  chunks FileChunk[]
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+  @@index([jobId, fileOrder])
+}
+
+model FileChunk {
+  id     String @id @default(cuid())
+  fileId String
+  file   File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  chunkIndex Int
+  chunkPath  String
+  uploaded   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([fileId, chunkIndex])
+}
+
+enum JobStatus {
+  CREATED
+  UPLOADING
+  READY
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum FileStatus {
+  UPLOADING
+  COMPLETE
+}
